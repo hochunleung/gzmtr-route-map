@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<body>
+<style>
+.static {
+	cursor: not-allowed;
+}
+.draggable, .draggable-group {
+	cursor: move;
+}
+</style>
+<!--div style="background-color: grey; position: absolute; left: 100px;"-->
+<svg id="svgtest" height="400" width="450">
+	<!--path id="lineAB" d="M 100 350 l 150 -150" stroke="red" stroke-width="3" fill="none" /-->
+	<!--path id="lineBC" d="M 250 200 l 150 150" stroke="red" stroke-width="3" fill="none" /-->
+	<!--path d="M 175 100 l 150 0" stroke="green" stroke-width="3" fill="none" /-->
+	<!--path d="M 100 350 q 150 -150 300 0" stroke="blue" stroke-width="5" fill="none" /-->
+		
+	<!--path id="lineAB" d="M 100 300 l 100 -100" stroke="red" stroke-width="3" fill="none" /-->
+	<!--path id="lineBC" d="M 200 200 l 100 0" stroke="red" stroke-width="3" fill="none" /-->
+	<!--path id="pathtest" d="M 100 200 l 80 -80 q 20 -20 40 -20 l 80 0" stroke="blue" stroke-width="5" fill="none" /-->
+	<!--circle id="circletest" class="draggable" cx="300" cy="100" r="10" stroke="black" stroke-width="3" fill="white" /-->
+	<!-- Mark relevant points -->
+	<!--g stroke="black" stroke-width="3" fill="black">
+		<circle id="pointA" cx="100" cy="350" r="3" />
+		<circle id="pointB" cx="250" cy="50" r="3" />
+		<circle id="pointC" cx="400" cy="350" r="3" />
+	</g-->
+	<!-- Label the points -->
+	<!--g font-size="30" font-family="sans-serif" fill="black" stroke="none" text-anchor="middle">
+		<text x="100" y="350" dx="-30">A</text>
+		<text x="250" y="50" dy="-10">B</text>
+		<text x="400" y="350" dx="30">C</text>
+	</g-->
+</svg>
+<!--/div-->
+<script type="text/javascript">
+	var stations=[
+		{name:"公園前", x:10, y:10},
+		{name:"黃沙", x:20, y:20},
+		{name:"體育西路", x:30, y:20}
+	];
+	var svg=document.getElementById("svgtest");
+	var path=document.getElementById("pathtest");
+	var circle=document.getElementById("circletest");
+	
+	var i, l=stations.length;
+	for(i=0;i<l;++i) {
+		if(i==0){stations[i].prev=null;}else{stations[i].prev=stations[i-1];}
+		if(i==l-1){stations[i].next=null;}else{stations[i].next=stations[i+1];}
+		stations.dir=null;
+		var o=document.createElementNS("http://www.w3.org/2000/svg", 'circle'), stn=stations[i];
+		o.setAttribute('cx', stn.x*10);
+		o.setAttribute('cy', stn.y*10);
+		o.setAttribute('r', 10);
+		o.setAttribute('stroke', 'black');
+		o.setAttribute('stroke-width', 3);
+		o.setAttribute('fill', 'white');
+		o.setAttribute('class', 'draggable');
+		o.model=stations[i];
+		stations[i].dom=o;
+		//console.log(o);
+		svg.appendChild(o);
+	}
+	for(i=0;i<l-1;++i){
+		drawPath(stations[i]);
+	}
+	svg.addEventListener('mousedown', startDrag);
+	svg.addEventListener('mousemove', drag);
+	svg.addEventListener('mouseup', endDrag);
+	svg.addEventListener('mouseleave', endDrag);
+	svg.addEventListener('touchstart', startDrag);
+	svg.addEventListener('touchmove', drag);
+	svg.addEventListener('touchend', endDrag);
+	svg.addEventListener('touchleave', endDrag);
+	svg.addEventListener('touchcancel', endDrag);
+	
+	function getDir(o) {
+		if(
+	}
+	
+	function drawPath(o) {
+		if(o.dir==null) o.dir=getDir(o);
+	}
+	
+	function getMousePosition(evt) {
+		var CTM = svg.getScreenCTM();
+		if (evt.touches) { evt = evt.touches[0]; }
+		return {
+			x: (evt.clientX - CTM.e) / CTM.a,
+			y: (evt.clientY - CTM.f) / CTM.d
+		};
+	}
+
+	var selectedElement, offset, transform;
+
+	function initialiseDragging(evt) {
+			offset = getMousePosition(evt);
+
+			// Make sure the first transform on the element is a translate transform
+			var transforms = selectedElement.transform.baseVal;
+
+			if (transforms.length === 0 || transforms.getItem(0).type !== SVGTransform.SVG_TRANSFORM_TRANSLATE) {
+				// Create an transform that translates by (0, 0)
+				var translate = svg.createSVGTransform();
+				translate.setTranslate(0, 0);
+				selectedElement.transform.baseVal.insertItemBefore(translate, 0);
+			}
+
+			// Get initial translation
+			transform = transforms.getItem(0);
+			offset.x -= transform.matrix.e;
+			offset.y -= transform.matrix.f;
+			//console.log(offset.x);
+	}
+
+	function startDrag(evt) {
+		if (evt.target.classList.contains('draggable')) {
+			selectedElement = evt.target;
+			initialiseDragging(evt);
+		} else if (evt.target.parentNode.classList.contains('draggable-group')) {
+			selectedElement = evt.target.parentNode;
+			initialiseDragging(evt);
+		}
+	}
+
+	function drag(evt) {
+		if (selectedElement) {
+			evt.preventDefault();
+			var coord = getMousePosition(evt);
+			var x1=Math.round(coord.x/10), y1=Math.round(coord.y/10);
+			if(selectedElement.model && (x1!=selectedElement.model.x || y1!=selectedElement.model.y))
+				transform.setTranslate(x1*10 - offset.x, y1*10 - offset.y);
+			//path.setAttribute("d", pathd(100, 200, coord.x, coord.y));
+			//console.log(coord.x);
+			//console.log(offset.y);
+		}
+	}
+
+	function endDrag(evt) {
+		selectedElement = false;
+	}
+	
+	function pathd(x0, y0, x1, y1) {
+		var dx=(x1-x0)/Math.abs(x1-x0);
+		var dy=(y0-y1)/Math.abs(y0-y1);
+		xa=x0;
+		ya=y1+dy*20;
+		xb=x0+dx*20;
+		yb=y1;
+		xc=x0;
+		yc=y1;
+		//return "M "+x0+" "+y0+" L "+xa+" "+ya+" Q "+xb+" "+yb+" "+xc+" "+yc+" L "+x1+" "+y1;
+		return "M "+x0+" "+y0+" L "+xa+" "+ya+" Q "+xc+" "+yc+" "+xb+" "+yb+" L "+x1+" "+y1;
+		
+	}
+</script>
+</body>
+</html>
