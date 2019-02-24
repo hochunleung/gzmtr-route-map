@@ -76,10 +76,22 @@
 	svg.addEventListener('touchcancel', endDrag);
 	
 	function getDir(o) {
-		if(
+		var station=o.model;
+		if(o.next){
+			var x1=o.next.x, y1=o.next.y;
+			var dx=Math.abs(x1-o.x), dy=Math.abs(y1=o.y);
+			if(dx>dy) o.dir='-' else o.dir='|';
+		}
+		else
+			o.dir='-';
+		return o.dir;
 	}
 	
 	function drawPath(o) {
+		var station=o.model;
+		var next=station.next;
+		if(!next) return;
+		var x0=station.x, y0=station.y, x1=next.x, y1=next.y;
 		if(o.dir==null) o.dir=getDir(o);
 	}
 	
