@@ -32,6 +32,8 @@
 		<text x="250" y="50" dy="-10">B</text>
 		<text x="400" y="350" dx="30">C</text>
 	</g-->
+	<g id="svg-paths"></g>
+	<g id="svg-stations"></g>
 </svg>
 <!--/div-->
 <script type="text/javascript">
@@ -40,9 +42,10 @@
 		{name:"黃沙", x:20, y:20},
 		{name:"體育西路", x:30, y:20}
 	];
+	
 	var svg=document.getElementById("svgtest");
-	var path=document.getElementById("pathtest");
-	var circle=document.getElementById("circletest");
+	var svgStations=document.getElementById("svg-stations");
+	var svgPaths=document.getElementById("svg-paths");
 	
 	var i, l=stations.length;
 	for(i=0;i<l;++i) {
@@ -58,12 +61,13 @@
 		o.setAttribute('fill', 'white');
 		o.setAttribute('class', 'draggable');
 		o.model=stations[i];
+		o.paths={prev:null, next:null};
 		stations[i].dom=o;
 		//console.log(o);
-		svg.appendChild(o);
+		svgStations.appendChild(o);
 	}
 	for(i=0;i<l-1;++i){
-		drawPath(stations[i]);
+		drawPath(stations[i].dom);
 	}
 	svg.addEventListener('mousedown', startDrag);
 	svg.addEventListener('mousemove', drag);
@@ -77,22 +81,110 @@
 	
 	function getDir(o) {
 		var station=o.model;
-		if(o.next){
-			var x1=o.next.x, y1=o.next.y;
-			var dx=Math.abs(x1-o.x), dy=Math.abs(y1=o.y);
-			if(dx>dy) o.dir='-' else o.dir='|';
+		//console.log(station);
+		if(station.next){
+			var x1=station.next.x, y1=station.next.y;
+			var dx=Math.abs(x1-station.x), dy=Math.abs(y1-station.y);
+			//console.log(station.x, station.y, station.next.x, station.next.y, dx, dy);
+			if(dx>dy){o.dir='-'} else{o.dir='|'};
 		}
 		else
 			o.dir='-';
 		return o.dir;
 	}
 	
+	function calcPathHV(x0, y0, x1, y1){
+		var dx=(x1-x0)/Math.abs(x1-x0);
+		var dy=(y1-y0)/Math.abs(y0-y1);
+		xa=x1-dx*20;
+		ya=y0;
+		xb=x1;
+		yb=y0+dy*20;
+		xc=x1;
+		yc=y0;
+		return "M "+x0+" "+y0+" L "+xa+" "+ya+" Q "+xc+" "+yc+" "+xb+" "+yb+" L "+x1+" "+y1;
+	}
+	
+	function calcPathVH(x0, y0, x1, y1){
+		var dx=(x1-x0)/Math.abs(x1-x0);
+		var dy=(y1-y0)/Math.abs(y0-y1);
+		xa=x0;
+		ya=y1-dy*20;
+		xb=x0+dx*20;
+		yb=y1;
+		xc=x0;
+		yc=y1;
+		return "M "+x0+" "+y0+" L "+xa+" "+ya+" Q "+xc+" "+yc+" "+xb+" "+yb+" L "+x1+" "+y1;
+	}
+	
+	function calcPathHH(x0, y0, x1, y1){
+		return "M "+x0+" "+y0+" L "+x1+" "+y1;
+	}
+	
+	function calcPathVV(x0, y0, x1, y1){
+		return "M "+x0+" "+y0+" L "+x1+" "+y1;
+	}
+	
+	function getPath(d1, d2, x0, y0, x1, y1){
+		var path;
+		if(d1=='-'){
+			if(d2=='-'){
+				path=calcPathHH(x0, y0, x1, y1);
+			}
+			else if(d2=='|'){
+				path=calcPathHV(x0, y0, x1, y1);
+			}
+		}
+		else if(d1=='|')
+		{
+			if(d2=='-'){
+				path=calcPathVH(x0, y0, x1, y1);
+			}
+			else if(d2=='|'){
+				path=calcPathVV(x0, y0, x1, y1);
+			}
+		}
+		return path;
+	}
+	
 	function drawPath(o) {
 		var station=o.model;
 		var next=station.next;
+		var path, d1, d2;
 		if(!next) return;
-		var x0=station.x, y0=station.y, x1=next.x, y1=next.y;
-		if(o.dir==null) o.dir=getDir(o);
+		var x0=station.x*10, y0=station.y*10, x1=next.x*10, y1=next.y*10;
+		if(o.dir==null) getDir(o);
+		if(next.dom.dir==null) getDir(next.dom);
+		d1=o.dir;
+		d2=next.dom.dir;
+		//console.log(station.dom.dir, next.dom.dir, d1, d2);
+		var path=getPath(d1, d2, x0, y0, x1, y1);
+		console.log(path);
+		var l=document.createElementNS("http://www.w3.org/2000/svg", 'path');
+		l.setAttribute('stroke', 'blue');
+		l.setAttribute('stroke-width', 10);
+		l.setAttribute('fill', 'none');
+		l.setAttribute('d', path);
+		o.paths.next=l;
+		next.dom.paths.prev=l;
+		svgPaths.appendChild(l);
+	}
+	
+	function modifyPath(o, x1, y1){
+		x1*=10;
+		y1*=10;
+		if(o.paths.prev){
+			var station=o.model, prev=o.model.prev;
+			var x0=prev.x*10, y0=prev.y*10, d1=prev.dom.dir, d2=o.dir;
+			var path=getPath(d1, d2, x0, y0, x1, y1);
+			o.paths.prev.setAttribute('d', path);
+		}
+		if(o.paths.next){
+			var station=o.model, next=o.model.next;
+			var x2=next.x*10, y2=next.y*10, d1=o.dir, d2=next.dom.dir;
+			var path=getPath(d1, d2, x1, y1, x2, y2);
+			o.paths.next.setAttribute('d', path);
+		}
 	}
 	
 	function getMousePosition(evt) {
@@ -123,7 +215,11 @@
 			transform = transforms.getItem(0);
 			offset.x -= transform.matrix.e;
 			offset.y -= transform.matrix.f;
-			//console.log(offset.x);
+			//console.log(selectedElement.model);
+			if(selectedElement.model){
+				offset.x=selectedElement.model.x*10;
+				offset.y=selectedElement.model.y*10;
+			}
 	}
 
 	function startDrag(evt) {
@@ -141,11 +237,15 @@
 			evt.preventDefault();
 			var coord = getMousePosition(evt);
 			var x1=Math.round(coord.x/10), y1=Math.round(coord.y/10);
-			if(selectedElement.model && (x1!=selectedElement.model.x || y1!=selectedElement.model.y))
-				transform.setTranslate(x1*10 - offset.x, y1*10 - offset.y);
+			o=selectedElement;
+			if(o.model && (x1!=o.model.x || y1!=o.model.y)){
+				o.model.x=x1;
+				o.model.y=y1;
+				o.setAttribute('cx', x1*10);
+				o.setAttribute('cy', y1*10);
+				modifyPath(o, x1, y1);
+			}
 			//path.setAttribute("d", pathd(100, 200, coord.x, coord.y));
-			//console.log(coord.x);
-			//console.log(offset.y);
 		}
 	}
 
