@@ -118,10 +118,12 @@
 	}
 	
 	function calcPathHH(x0, y0, x1, y1){
+		if(y0==y1) return "M "+x0+" "+y0+" L "+x1+" "+y1;
 		return "M "+x0+" "+y0+" L "+x1+" "+y1;
 	}
 	
 	function calcPathVV(x0, y0, x1, y1){
+		if(x0==x1) return "M "+x0+" "+y0+" L "+x1+" "+y1;
 		return "M "+x0+" "+y0+" L "+x1+" "+y1;
 	}
 	
@@ -147,6 +149,20 @@
 		return path;
 	}
 	
+	function getNext(o){
+		if(o.model){
+			if(o.model.next) return o. model.next;
+		}
+		return null;
+	}
+		
+	function getPrev(o){
+		if(o.model){
+			if(o.model.prev) return o. model.prev;
+		}
+		return null;
+	}
+	
 	function drawPath(o) {
 		var station=o.model;
 		var next=station.next;
@@ -170,7 +186,14 @@
 		svgPaths.appendChild(l);
 	}
 	
-	function modifyPath(o, x1, y1){
+	function updateDir(o){
+		//var prev=getPrev(o), next=getNext(o);
+		getDir(o);
+	}
+	
+	function modifyPath(o){
+		var x1=o.model.x, y1=o.model.y;
+		updateDir(o, x1, y1);
 		x1*=10;
 		y1*=10;
 		if(o.paths.prev){
@@ -243,7 +266,7 @@
 				o.model.y=y1;
 				o.setAttribute('cx', x1*10);
 				o.setAttribute('cy', y1*10);
-				modifyPath(o, x1, y1);
+				modifyPath(o);
 			}
 			//path.setAttribute("d", pathd(100, 200, coord.x, coord.y));
 		}
